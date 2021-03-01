@@ -1,5 +1,6 @@
 import dash
 import dash_auth
+import flask
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
@@ -17,8 +18,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 USERNAME_PASSWORD_PAIRS = [
     ['JamesBond', '007'], ['LouisArmstrong', 'satchmo']
 ]
+server = flask.Flask(__name__)
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, server=server)
 
 app.scripts.config.serve_locally = True
 app.css.config.serve_locally = True
@@ -223,8 +225,10 @@ def update_graph(xaxis_name, yaxis_name, selected_sport):
     }
 
 
+# if __name__ == '__main__':
+#     app.run_server(host='0.0.0.0', port=8050)
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8050)
+    app.run_server(debug=True)
 # # application = app.server
 # # application = app
 # if __name__ == '__main__':
