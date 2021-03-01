@@ -5,6 +5,7 @@ import pdb
 import os
 import sys
 import threading
+import pandas as pd
 
 
 class ProgressPercentage(object):
