@@ -1,23 +1,43 @@
 import dash
+import dash_auth
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import numpy as np
 import pandas as pd
+import os
+
+USERNAME_PASSWORD_PAIRS = [
+    ['JamesBond', '007'], ['LouisArmstrong', 'satchmo']
+]
+
 app = dash.Dash()
+auth = dash_auth.BasicAuth(app, USERNAME_PASSWORD_PAIRS)
+
+# app = dash.Dash()
 
 colors = {
     'background': '#111111',
-    'text': '#7FDBFF',
-    'plots': '9EA0A1'}
+    'text': 'rgb(255,0,0)',
+    'plots': 'rgb(255,128,0)'}
 
 df = pd.read_csv(
     '/Users/bruvio/Documents/Dropbox/Documenti/SpOrT/Triathlon/Training/bruvio_tri/workouts_bruvio_2020.csv')
 
 sport_options = []
 for sport in df['WorkoutType'].unique():
-    sport_options.append({'label': str(sport), 'value': sport})
+    if sport == 'Day Off':
+        continue
+    else:
+        sport_options.append({'label': str(sport), 'value': sport})
+
+# sport_options.remove('Day Off')
+
+columns = df.columns
+remove_list = ['Title', 'WorkoutType', 'WorkoutDescription',
+               'WorkoutDay', 'CoachComments', 'AthleteComments']
+features = [x for x in columns if x not in remove_list]
 
 bike_power_avg = df[df['WorkoutType'] == 'Bike']['PowerAverage']
 bike_TimeTotalInHours = df[df['WorkoutType'] == 'Bike']['TimeTotalInHours']
@@ -42,6 +62,7 @@ app.layout = html.Div(children=[
                         x=bike_TimeTotalInHours,
                         y=bike_power_avg,
                         mode='markers',
+                        text=df['Title'],
                         marker={
                             'size': 12,
                             'color': 'rgb(51,204,153)',
@@ -71,6 +92,7 @@ app.layout = html.Div(children=[
                         x=run_TimeTotalInHours,
                         y=run_power_avg,
                         mode='markers',
+                        text=df['Title'],
                         marker={
                             'size': 12,
                             'color': 'rgb(51,204,153)',
@@ -95,10 +117,35 @@ app.layout = html.Div(children=[
     ]
     ),
     html.Div([
+
+        dcc.Dropdown(id='sport-picker', options=sport_options, value='Bike'),
         dcc.Graph(id='graph'),
-        dcc.Dropdown(id='sport-picker', options=sport_options, value='Bike')
     ]
     ),
+
+    html.Div([
+
+        html.Div([
+            dcc.Dropdown(
+                id='xaxis',
+                options=[{'label': i.title(), 'value': i} for i in features],
+                value='TimeTotalInHours'
+            )
+        ],
+            style={'width': '48%', 'display': 'inline-block'}),
+
+        html.Div([
+            dcc.Dropdown(
+                id='yaxis',
+                options=[{'label': i.title(), 'value': i} for i in features],
+                value='PowerAverage'
+            )
+        ], style={'width': '48%', 'float': 'right', 'display': 'inline-block'}),
+
+        dcc.Graph(id='feature-graphic')
+    ], style={'padding': 10})
+
+
 ],
 
 
@@ -114,14 +161,17 @@ def update_figure(selected_sport):
     traces = []
     # for continent_name in filtered_df['continent'].unique():
     #     df_by_continent = filtered_df[filtered_df['continent'] == continent_name]
+    # print(filtered_df['Title'])
     traces.append(go.Scatter(
         x=filtered_df['TimeTotalInHours'],
         y=filtered_df['TSS'],
-        text='TSS',
+        text=filtered_df['Title'],
         mode='markers',
         opacity=0.7,
         marker={'size': 15},
-        name=filtered_df['Title']
+        # ,
+        # name=filtered_df['Title']
+        # name='ciao'
     ))
 
     return {
@@ -129,6 +179,34 @@ def update_figure(selected_sport):
         'layout': go.Layout(
             xaxis={'title': 'TimeTotalInHours'},
             yaxis={'title': 'TSS'},
+            hovermode='closest'
+        )
+    }
+
+
+@app.callback(
+    Output('feature-graphic', 'figure'),
+    [Input('xaxis', 'value'),
+     Input('yaxis', 'value'),
+     Input('sport-picker', 'value')])
+def update_graph(xaxis_name, yaxis_name, selected_sport):
+    filtered_df = df[df['WorkoutType'] == selected_sport]
+    return {
+        'data': [go.Scatter(
+            x=filtered_df[xaxis_name],
+            y=filtered_df[yaxis_name],
+            text=df['Title'],
+            mode='markers',
+            marker={
+                'size': 15,
+                'opacity': 0.5,
+                'line': {'width': 0.5, 'color': 'white'}
+            }
+        )],
+        'layout': go.Layout(
+            xaxis={'title': xaxis_name.title()},
+            yaxis={'title': yaxis_name.title()},
+            margin={'l': 40, 'b': 40, 't': 10, 'r': 0},
             hovermode='closest'
         )
     }
