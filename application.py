@@ -18,8 +18,11 @@ USERNAME_PASSWORD_PAIRS = [
     ['JamesBond', '007'], ['LouisArmstrong', 'satchmo']
 ]
 
-app = dash.Dash()
-auth = dash_auth.BasicAuth(app, USERNAME_PASSWORD_PAIRS)
+app = dash.Dash(__name__)
+
+app.scripts.config.serve_locally = True
+app.css.config.serve_locally = True
+# auth = dash_auth.BasicAuth(app, USERNAME_PASSWORD_PAIRS)
 
 # app = dash.Dash()
 
@@ -221,5 +224,9 @@ def update_graph(xaxis_name, yaxis_name, selected_sport):
     }
 
 
+# if __name__ == '__main__':
+#     app.run_server()
+application = app.server
+
 if __name__ == '__main__':
-    app.run_server()
+    application.run(debug=True, port=8080)
