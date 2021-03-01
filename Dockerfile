@@ -25,6 +25,7 @@ FROM ubuntu:20.10
 
 RUN apt-get update
 RUN apt-get install -y python3 python3-dev python3-pip
+# RUN apt-get install -y gunicorn
 
 COPY ./workouts_bruvio_2020.csv /app/workouts_bruvio_2020.csv
 COPY ./requirements.txt /tmp/ 
@@ -35,4 +36,5 @@ RUN pip3 install -r /tmp/requirements.txt
 COPY ./ /app
 WORKDIR /app
 
+# CMD [ "gunicorn" "--bind" "0.0.0.0:80" "wsgi" ]
 CMD gunicorn --bind 0.0.0.0:80 wsgi
