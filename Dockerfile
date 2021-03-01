@@ -16,4 +16,4 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 CMD [ "python","application.py" ]
 
 
-EXPOSE 8080
+EXPOSE 8050

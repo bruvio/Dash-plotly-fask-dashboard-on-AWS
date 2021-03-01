@@ -161,7 +161,6 @@ app.layout = html.Div(children=[
 ],
 
 
-
     style={'backgroundColor': colors['background']}
 )
 
@@ -224,15 +223,35 @@ def update_graph(xaxis_name, yaxis_name, selected_sport):
     }
 
 
-# if __name__ == '__main__':
-#     app.run_server()
-# application = app.server
-# application = app
 if __name__ == '__main__':
-    # application.run(port=8080)
+    app.run_server(host='0.0.0.0', port=8050)
+# # application = app.server
+# # application = app
+# if __name__ == '__main__':
+#     # application.run(port=8080)
 
-    app.run_server()
-    # app.run_server(host='0.0.0.0', port=8050, debug=True)
-    # app.run()
-# eb init -p python-3.7 Dash-bru --region eu-west-2
-# eb create Dash-env
+#     app.run_server()
+#     # app.run_server(host='0.0.0.0', port=8050, debug=True)
+#     # app.run()
+# # eb init -p python-3.7 Dash-bru --region eu-west-2
+# # eb create Dash-env
+
+# import dash
+# import dash_html_components as html
+
+# app = dash.Dash(__name__)
+
+# app.scripts.config.serve_locally = True
+# app.css.config.serve_locally = True
+
+# app.layout = html.Div([
+#     html.H1('Hello, World!')
+# ])
+
+# # application = app.server
+
+# if __name__ == '__main__':
+#     # application.run(
+#     #
+#     # )
+#     app.run_server(debug=True)
