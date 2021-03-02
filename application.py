@@ -3,6 +3,7 @@ import dash_auth
 import flask
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import numpy as np
@@ -20,7 +21,8 @@ USERNAME_PASSWORD_PAIRS = [
 ]
 server = flask.Flask(__name__)
 
-app = dash.Dash(__name__, server=server)
+app = dash.Dash(__name__, server=server,
+                external_stylesheets=[dbc.themes.SLATE])
 
 app.scripts.config.serve_locally = True
 app.css.config.serve_locally = True
@@ -86,8 +88,8 @@ app.layout = html.Div(children=[
                     )
                 ],
                 'layout': go.Layout(
-                    # plot_bgcolor=colors['background'],
-                    # paper_bgcolor=colors['background'],
+                    plot_bgcolor=colors['background'],
+                    paper_bgcolor=colors['background'],
                     font={
                         'color': colors['plots']
                     },
@@ -116,8 +118,8 @@ app.layout = html.Div(children=[
                     )
                 ],
                 'layout': go.Layout(
-                    # plot_bgcolor=colors['background'],
-                    # paper_bgcolor=colors['background'],
+                    plot_bgcolor=colors['background'],
+                    paper_bgcolor=colors['background'],
                     font={
                         'color': colors['plots']
                     },
@@ -190,6 +192,14 @@ def update_figure(selected_sport):
     return {
         'data': traces,
         'layout': go.Layout(
+
+            plot_bgcolor=colors['background'],
+            paper_bgcolor=colors['background'],
+            font={
+                'color': colors['plots']
+            },
+
+
             xaxis={'title': 'TimeTotalInHours'},
             yaxis={'title': 'TSS'},
             hovermode='closest'
@@ -217,6 +227,14 @@ def update_graph(xaxis_name, yaxis_name, selected_sport):
             }
         )],
         'layout': go.Layout(
+
+            plot_bgcolor=colors['background'],
+            paper_bgcolor=colors['background'],
+            font={
+                'color': colors['plots']
+            },
+
+
             xaxis={'title': xaxis_name.title()},
             yaxis={'title': yaxis_name.title()},
             margin={'l': 40, 'b': 40, 't': 10, 'r': 0},
@@ -225,37 +243,5 @@ def update_graph(xaxis_name, yaxis_name, selected_sport):
     }
 
 
-# if __name__ == '__main__':
-#     app.run_server(host='0.0.0.0', port=8050)
 if __name__ == '__main__':
     app.run_server(debug=True)
-# # application = app.server
-# # application = app
-# if __name__ == '__main__':
-#     # application.run(port=8080)
-
-#     app.run_server()
-#     # app.run_server(host='0.0.0.0', port=8050, debug=True)
-#     # app.run()
-# # eb init -p python-3.7 Dash-bru --region eu-west-2
-# # eb create Dash-env
-
-# import dash
-# import dash_html_components as html
-
-# app = dash.Dash(__name__)
-
-# app.scripts.config.serve_locally = True
-# app.css.config.serve_locally = True
-
-# app.layout = html.Div([
-#     html.H1('Hello, World!')
-# ])
-
-# # application = app.server
-
-# if __name__ == '__main__':
-#     # application.run(
-#     #
-#     # )
-#     app.run_server(debug=True)
