@@ -13,6 +13,6 @@ run_params:
         - ${subnet2}
       security_groups:
         - ${secgroupid}
-      assign_public_ip: ENABLE
+      assign_public_ip: ENABLED
 
 

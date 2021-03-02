@@ -8,6 +8,6 @@ services:
       driver: awslogs
       options:
         awslogs-group: dashboard-ecs
-        awslogs-region: us-east-1
+        awslogs-region: ${REGION}
         awslogs-stream-prefix: web
         
