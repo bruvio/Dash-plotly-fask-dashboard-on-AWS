@@ -40,7 +40,9 @@ echo "repository uri" $REPO_URI
 docker tag tp_dashboard $REPO_URI
 
 docker push $REPO_URI:latest
-exit
+# exit
+
+# 546123287190.dkr.ecr.us-east-1.amazonaws.com/dashboard
 
 aws iam wait role-exists --role-name ecsTaskExecutionRole 2>/dev/null || \ aws iam --region $REGION create-role --role-name ecsTaskExecutionRole \
   --assume-role-policy-document file://task-execution-assume-role.json 
