@@ -36,14 +36,14 @@ docker tag tp_dashboard $REPO_URI
 
 docker push $REPO_URI:latest
 
-aws iam wait role-exists --role-name ecsTaskExecutionRole
+# aws iam wait role-exists --role-name ecsTaskExecutionRole
 
-aws iam --region $REGION create-role --role-name ecsTaskExecutionRole \
-  --assume-role-policy-document file://task-execution-assume-role.json
+# aws iam --region $REGION create-role --role-name ecsTaskExecutionRole \
+#   --assume-role-policy-document file://task-execution-assume-role.json
 
 
-aws iam --region $REGION attach-role-policy --role-name ecsTaskExecutionRole \
-  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+# aws iam --region $REGION attach-role-policy --role-name ecsTaskExecutionRole \
+#   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
  
 # ecs-cli configure profile --access-key AWS_ACCESS_KEY_ID --secret-key AWS_SECRET_ACCESS_KEY --profile-name $profile_name
@@ -54,7 +54,12 @@ ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name
 ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name
 
 
-ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name
+ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name 
+
+
+# ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
+#   --cluster-config $CLUSTER --ecs-profile $profile_name
+
 
 # VPC created: vpc-013ec393688c8d82a
 # Subnet created: subnet-0b41e8b69171835e0
@@ -71,21 +76,64 @@ SGid=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPCid" \
 echo $SGid
 
 
-SBnet=$(aws ec2 describe-subnets --filter "Name=vpc-id,Values=vpc-02ccd4753c63214e8" --region us-east-1 --query "Subnets[*].SubnetId" --output text )
+SUBNET_IDS=$(aws ec2 describe-subnets --filter "Name=vpc-id,Values=$VPCid" --region us-east-1 --query "Subnets[*].SubnetId" --output text )
 # 
 
-echo $SBnet
+# SUBNET_IDS=$(aws ec2 describe-subnets --filter "Name=vpc-id,Values=vpc-07233c0cfa0c6ce60" --region us-east-1 --query "Subnets[*].[SubnetId]" --output text)
+
+IFS=$'\t ' read -r -a subnet_ids <<< $SUBNET_IDS
+# echo "${subnet_ids[0]}"
+subnet1=${subnet_ids[0]}
+# echo "${subnet_ids[1]}"
+subnet2=${subnet_ids[1]}
+
+echo $subnet1
+echo $subnet2
 # exit
+# i=1
+# for SUBNET_ID in $SUBNET_IDS;
+# do
+#     declare subnet$i=$SUBNET_ID
+#     i=$(( $i + 1 ))
+#     echo $SUBNET_ID
+# done
+# echo 
+# subnet-0badddd2c527df852        subnet-0ab51c66262a93d6d
+# echo $SUBNET_IDS
+# 
+
+
 aws ec2 authorize-security-group-ingress --group-id $SGid --protocol tcp \
 --port 80 --cidr 0.0.0.0/0 --region $REGION
 
+# exit
+
+
+
+export image=$REPO_URI
+rm -f docker-compose.yml temp.yml  
+( echo "cat <<EOF >docker-compose.yml";
+  cat docker-template.yml;
+#   echo "EOF";
+) >temp.yml
+. temp.yml
+# cat docker-compose.yml
+# exit
+
+
+export subnet1=$subnet1
+export subnet2=$subnet2
+export secgroupid=$SGid
+rm -f ecs-params.yml temp.yml  
+( echo "cat <<EOF >ecs-params.yml";
+  cat ecs-params-template.yml;
+#   echo "EOF";
+) >temp.yml
+. temp.yml
+# cat ecs-params.yml
 
 ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
   --cluster-config $CLUSTER --ecs-profile $profile_name
-
-
-
-# exit
 
 
 ecs-cli compose --project-name $SERVICE_NAME service ps \
@@ -95,6 +143,9 @@ ecs-cli compose --project-name $SERVICE_NAME service ps \
 
 ecs-cli compose --project-name $SERVICE_NAME service down --cluster-config $CLUSTER \
   --ecs-profile $profile_name
+
+
+ecs-cli compose --project-name $SERVICE_NAME service scale 2 --cluster-config $SERVICE_NAME --ecs-profile $profile_name
 
 exit
 
