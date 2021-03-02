@@ -9,34 +9,34 @@ echo "repository name" $REPO_NAME
 SERVICE_NAME="dashboard"
 # IMAGE_VERSION="v_"${BUILD_NUMBER}
 IMAGE_VERSION="latest"
-TASK_FAMILY="your task defination name"
+TASK_FAMILY="mytask"
 CLUSTER="dashboard"
 REGION="us-east-1"
 
-profile_name='AWS'
+profile_name='AWS-cli'
 
-docker build -t $IMAGE_NAME .
+# docker build -t $IMAGE_NAME .
 
 
 
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 546123287190.dkr.ecr.us-east-1.amazonaws.com
 
-# create repository on AWS ECR
-# aws ecr get-authorization-token
-# aws ecr create-repository \
-    # --repository-name $REPO_NAME
+# # create repository on AWS ECR
+# # aws ecr get-authorization-token
+# # aws ecr create-repository \
+#     # --repository-name $REPO_NAME
 
 
 REPO_URI=$(aws ecr describe-repositories --repository-names "${REPO_NAME}" --query "repositories[0].repositoryUri" --output text 2>/dev/null || \
            aws ecr create-repository --repository-name "${REPO_NAME}"  --query "repository.repositoryUri" --output text)
 
 echo "repository uri" $REPO_URI
-# docker tag ebov-dash:latest 546123287190.dkr.ecr.us-east-1.amazonaws.com/ebov
-# docker tag tp_dashboard $(REPO_URI)
+
+docker tag tp_dashboard $REPO_URI
 
 docker push $REPO_URI:latest
 
-exit 
+aws iam wait role-exists --role-name ecsTaskExecutionRole
 
 aws iam --region $REGION create-role --role-name ecsTaskExecutionRole \
   --assume-role-policy-document file://task-execution-assume-role.json
@@ -45,30 +45,48 @@ aws iam --region $REGION create-role --role-name ecsTaskExecutionRole \
 aws iam --region $REGION attach-role-policy --role-name ecsTaskExecutionRole \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
-
-# profile_name='AWS'
+ 
 # ecs-cli configure profile --access-key AWS_ACCESS_KEY_ID --secret-key AWS_SECRET_ACCESS_KEY --profile-name $profile_name
 
 
 ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name $CLUSTER --region $REGION
 
-ecs-cli up --cluster-config $CLUSTER --ecs-profile $profile_name
+ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name
 
 
-ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
-  --cluster-config $CLUSTER --ecs-profile $profile_name
+ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name
+
+# VPC created: vpc-013ec393688c8d82a
+# Subnet created: subnet-0b41e8b69171835e0
+# Subnet created: subnet-040f61342b33be4a5
+# aws ec2 describe-vpc 
+VPCid=$(aws ec2 describe-vpcs --vpc-ids --query "Vpcs[0].VpcId" --output text)
+# VpcIdq
+
+echo $VPCid
+
+SGid=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPCid" \
+  --region $REGION  --query "SecurityGroups[0].GroupId" --output text)
+
+echo $SGid
 
 
+SBnet=$(aws ec2 describe-subnets --filter "Name=vpc-id,Values=vpc-02ccd4753c63214e8" --region us-east-1 --query "Subnets[*].SubnetId" --output text )
+# 
 
-aws ec2 describe-security-groups --filters Name=vpc-id,Values=vpc-0465d14ba04402f80 \
-  --region $REGION
-
-aws ec2 authorize-security-group-ingress --group-id sg-0258b891f053e077b --protocol tcp \
+echo $SBnet
+# exit
+aws ec2 authorize-security-group-ingress --group-id $SGid --protocol tcp \
 --port 80 --cidr 0.0.0.0/0 --region $REGION
 
 
 ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
   --cluster-config $CLUSTER --ecs-profile $profile_name
+
+
+
+# exit
+
 
 ecs-cli compose --project-name $SERVICE_NAME service ps \
   --cluster-config $CLUSTER --ecs-profile $profile_name
@@ -78,8 +96,9 @@ ecs-cli compose --project-name $SERVICE_NAME service ps \
 ecs-cli compose --project-name $SERVICE_NAME service down --cluster-config $CLUSTER \
   --ecs-profile $profile_name
 
+exit
 
-ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name
+
 
 
 # OLD_TASK_DEF=$(aws ecs describe-task-definition --task-definition <task_family_name>)
