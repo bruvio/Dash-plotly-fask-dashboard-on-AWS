@@ -20,7 +20,11 @@ DNS_name='brunoviola.com'
 
 docker build -t $IMAGE_NAME:$IMAGE_VERSION .
 # exit
+
+
 # docker run -p 8080:80 tp_dashboard:latest
+# docker-compose -f docker-compose_aws_credential.yml up --build -d
+# docker container run -it --name dash tp_dashboard:3 bash
 
 # exit
 
