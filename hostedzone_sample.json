@@ -1,0 +1,14 @@
+{
+     "Comment": "Creating Alias resource record sets in Route 53",
+     "Changes": [{
+                "Action": "CREATE",
+                "ResourceRecordSet": {
+                            "Name": "dashboard.brunoviola.com",
+                            "Type": "A",
+                            "AliasTarget":{
+                                    "HostedZoneId": "Z0878814V1LSBP2KO1KE",
+                                    "DNSName": "3.228.17.233",
+                                    "EvaluateTargetHealth": false
+                              }}
+                          }]
+}

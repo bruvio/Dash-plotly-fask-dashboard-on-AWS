@@ -8,17 +8,18 @@ echo "repository name" $REPO_NAME
 
 SERVICE_NAME="dashboard"
 # IMAGE_VERSION="v_"${BUILD_NUMBER}
-IMAGE_VERSION="latest"
-TASK_FAMILY="mytask"
+IMAGE_VERSION=${1:-latest}
+# IMAGE_VERSION="latest"
+# TASK_FAMILY="dashboard"
 CLUSTER="dashboard"
 REGION="us-east-1"
 
 profile_name='AWS-cli'
 accountid='546123287190'
+DNS_name='brunoviola.com'
 
-
-docker build -t $IMAGE_NAME .
-
+docker build -t $IMAGE_NAME:$IMAGE_VERSION .
+# exit
 # docker run -p 8080:80 tp_dashboard:latest
 
 # exit
@@ -26,41 +27,37 @@ docker build -t $IMAGE_NAME .
 
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $accountid.dkr.ecr.$REGION.amazonaws.com
 
-# # create repository on AWS ECR
-# # aws ecr get-authorization-token
-# # aws ecr create-repository \
-#     # --repository-name $REPO_NAME
-
+# create repository on AWS ECR
 
 REPO_URI=$(aws ecr describe-repositories --repository-names "${REPO_NAME}" --query "repositories[0].repositoryUri" --output text 2>/dev/null || \
-           aws ecr create-repository --repository-name "${REPO_NAME}"  --query "repository.repositoryUri" --output text)
+           aws ecr create-repository --repository-name "${REPO_NAME}"  --query "repository.repositoryUri" --output text) 
 
 echo "repository uri" $REPO_URI
 
-docker tag tp_dashboard $REPO_URI
+docker tag $IMAGE_NAME $REPO_URI:$IMAGE_VERSION
 
-docker push $REPO_URI:latest
+docker push $REPO_URI:$IMAGE_VERSION
 # exit
 
 # 546123287190.dkr.ecr.us-east-1.amazonaws.com/dashboard
 
 aws iam wait role-exists --role-name ecsTaskExecutionRole 2>/dev/null || \ aws iam --region $REGION create-role --role-name ecsTaskExecutionRole \
-  --assume-role-policy-document file://task-execution-assume-role.json 
-
+  --assume-role-policy-document file://task-execution-assume-role.json || return 1
+ 
 
 aws iam --region $REGION attach-role-policy --role-name ecsTaskExecutionRole \
-  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy || return 1
 
  #to be used only at the very beginning when configuring ecs-cli
 # ecs-cli configure profile --access-key AWS_ACCESS_KEY_ID --secret-key AWS_SECRET_ACCESS_KEY --profile-name $profile_name
 
 
-ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name $CLUSTER --region $REGION
+ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name $CLUSTER --region $REGION || return 1
 
-ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name
+ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name || return 1
 
 
-ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name 
+ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name  || return 1q
 
 
 
@@ -82,7 +79,7 @@ echo $subnet2
 
 
 aws ec2 authorize-security-group-ingress --group-id $SGid --protocol tcp \
---port 80 --cidr 0.0.0.0/0 --region $REGION
+--port 80 --cidr 0.0.0.0/0 --region $REGION || return
 
 
 
@@ -117,6 +114,34 @@ ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
 ecs-cli compose --project-name $SERVICE_NAME service ps \
   --cluster-config $CLUSTER --ecs-profile $profile_name
 
+# #get hostedzone id
+
+# HostedZoneId=$(aws route53 list-hosted-zones-by-name --dns-name ${DNS_name} --query "HostedZones[*].Id" --output text)
+
+# # IFS=$'/' read -ra aaa <<< $HostedZoneId
+# # id=${HostedZoneId[2]}
+# # echo $HostedZoneId | sed -e 's///\n/g'
+# echo $HostedZoneId
+# IFS='/' read d1 d2 id  <<<$HostedZoneId
+# echo $id
+
+
+# HostedZoneId=$(aws route53 list-hosted-zones-by-name | 
+# jq --arg name "brunoviola.com" \
+# -r '.HostedZones | .[] | select(.Name=="\($name)") | .Id' --output text)
+
+# aws route53 change-resource-record-sets --hosted-zone-id $id --change-batch file://hostedzone_sample.json || return 1
+
+
+# TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "$SERVICE_NAME" --region $REGION)
+
+
+# NEW_TASK_DEFINTIION=$(echo $SERVICE_NAME | jq --arg IMAGE "$IMAGE_VERSION" '.taskDefinition | .containerDefinitions[0].image = $REPO_NAME | del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.compatibilities)')
+
+# echo $NEW_TASK_DEFINTIION
+# exit
+# aws ecs register-task-definition --region $REGION --cli-input-json "$NEW_TASK_DEFINTIION"
+
 #scale up
 # ecs-cli compose --project-name $SERVICE_NAME service scale 2 --cluster-config $SERVICE_NAME --ecs-profile $profile_name
 
@@ -133,9 +158,9 @@ ecs-cli compose --project-name $SERVICE_NAME service ps \
 
 
 
-# OLD_TASK_DEF=$(aws ecs describe-task-definition --task-definition <task_family_name>)
+# OLD_TASK_DEF=$(aws ecs describe-task-definition --task-definition $SERVICE_NAME)
 # NEW_CONTAINER_DEFS=$(echo $OLD_TASK_DEF | jq '.taskDefinition.containerDefinitions' | jq '.[0].image="<new_image_name>"')
-# aws ecs register-task-definition --family <task_family_name> --container-definitions "'$(echo $NEW_CONTAINER_DEFS)'"
+# aws ecs register-task-definition --family $SERVICE_NAME--container-definitions "'$(echo $NEW_CONTAINER_DEFS)'"
 
 
 
