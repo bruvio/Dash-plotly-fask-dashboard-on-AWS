@@ -17,7 +17,7 @@ CLUSTER="dashboard_S3"
 REGION="us-east-1"
 
 profile_name='AWS-cli'
-accountid='546123287190'
+accountid=$(aws sts get-caller-identity --query Account --output text)
 DNS_name='brunoviola.com'
 
 
