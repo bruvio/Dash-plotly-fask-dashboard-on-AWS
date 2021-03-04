@@ -49,3 +49,13 @@ minimum necessary for decent operation.
 ---
 
 I made a bash script caled `commands_AWS_deploy.sh` that uses the CLI to deploy the cluster.
+
+---
+
+##TO DO:
+
+send AWS credentials to container to test locally using a docker override compose file still does not work
+
+sending AWS credential to container using env variables in docker-compose file OK
+
+updating task definition to rediploy application
