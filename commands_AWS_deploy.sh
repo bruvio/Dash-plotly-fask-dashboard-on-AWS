@@ -17,6 +17,12 @@ REGION="us-east-1"
 profile_name='AWS-cli'
 accountid='546123287190'
 DNS_name='brunoviola.com'
+# iam_role='ecsTaskExecutionRole' #ecsTaskExecutionRole
+task_role='dashboard_role' #ecsTaskExecutionRole
+task_execution_role='ecsTaskExecutionRole'
+
+
+
 
 docker build -t $IMAGE_NAME:$IMAGE_VERSION .
 # exit
@@ -45,12 +51,62 @@ docker push $REPO_URI:$IMAGE_VERSION
 
 # 546123287190.dkr.ecr.us-east-1.amazonaws.com/dashboard
 
-aws iam wait role-exists --role-name ecsTaskExecutionRole 2>/dev/null || \ aws iam --region $REGION create-role --role-name ecsTaskExecutionRole \
+# aws ecs register-task-definition --generate-cli-skeleton
+
+
+aws iam wait role-exists --role-name $task_execution_role 2>/dev/null || \ aws iam --region $REGION create-role --role-name $task_execution_role \
   --assume-role-policy-document file://task-execution-assume-role.json || return 1
  
 
-aws iam --region $REGION attach-role-policy --role-name ecsTaskExecutionRole \
+aws iam --region $REGION attach-role-policy --role-name $task_execution_role \
   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy || return 1
+
+
+# aws iam wait role-exists --role-name $task_role 2>/dev/null || \ 
+# aws iam --region $REGION create-role --role-name $task_role \
+#   --assume-role-policy-document file://task-role.json || return 1
+
+
+# aws iam --region $REGION attach-role-policy --role-name $task_role \
+#   --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess || return 1
+
+
+
+# ACCOUNT_ID=$(aws sts get-caller-identity \
+#    --query Account --output text)
+
+# aws iam create-role  \
+#   --role-name $task_execution_role \
+#   --assume-role-policy-document "$(
+#      jq -n . --arg account_id $ACCOUNT_ID '{
+#         "Statement": [{
+#             "Effect": "Allow",
+#             "Principal": { "Service": [ "ecs-tasks.amazonaws.com" ] },
+#             "Action": [ "sts:AssumeRole" ]
+#           },{
+#             "Effect": "Allow",
+#             "Principal": { "AWS": [ $account_id ] },
+#             "Action": [ "sts:AssumeRole" ]
+#           }]}'
+#      )"
+
+
+# aws iam create-role $task_role \
+#   --role-name $task_role \
+#   --policy-name 'describe-parameters' \
+#   --policy-document '{
+#             "Statement": [{
+#                 "Effect": "Allow",
+#                 "Action": [
+#                 "s3:Get*",
+#                 "s3:List*"
+#             ],
+#                 "Resource": "*"
+#             }]}'
+
+
+# aws iam --region $REGION attach-role-policy --role-name $iam_role \
+#   --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess || return 1
 
  #to be used only at the very beginning when configuring ecs-cli
 # ecs-cli configure profile --access-key AWS_ACCESS_KEY_ID --secret-key AWS_SECRET_ACCESS_KEY --profile-name $profile_name
@@ -100,6 +156,8 @@ rm -f docker-compose.yml temp.yml
 # exit
 
 ## creating automatically ecs-params with SGid and subnet ids
+export task_role
+export task_execution_role
 export subnet1=$subnet1
 export subnet2=$subnet2
 export secgroupid=$SGid
@@ -117,6 +175,16 @@ ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
 
 ecs-cli compose --project-name $SERVICE_NAME service ps \
   --cluster-config $CLUSTER --ecs-profile $profile_name
+
+aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,InstanceType,PublicIpAddress,Tags[?Key==`Name`]| [0].Value]' --output table
+
+
+
+# aws ecs update-service \
+# --cluster $CLUSTER \
+# --service $SERVICE_NAME \
+# --task-definition feedback-bot-dev \
+# --region $REGION
 
 # #get hostedzone id
 
