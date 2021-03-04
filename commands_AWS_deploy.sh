@@ -1,8 +1,10 @@
 #!/bin/bash
 
 IMAGE_NAME="tp_dashboard"
+echo ""
 echo "image name" $IMAGE_NAME
 REPO_NAME="dashboard"
+echo ""
 echo "repository name" $REPO_NAME
 
 
@@ -17,7 +19,8 @@ REGION="us-east-1"
 profile_name='AWS-cli'
 accountid='546123287190'
 DNS_name='brunoviola.com'
-# iam_role='ecsTaskExecutionRole' #ecsTaskExecutionRole
+
+
 task_role='dashboardRole' #ecsTaskExecutionRole
 task_execution_role='ecsTaskExecutionRole'
 
@@ -62,65 +65,38 @@ aws iam wait role-exists --role-name $task_execution_role 2>/dev/null || \ aws i
 echo ""
 echo "adding AmazonECSTaskExecutionRole Policy"
 aws iam --region $REGION attach-role-policy --role-name $task_execution_role \
-  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy || return 1
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 
 
 echo ""
 echo "creating task role"
 aws iam wait role-exists --role-name $task_role 2>/dev/null || \ 
 aws iam --region $REGION create-role --role-name $task_role \
-  --assume-role-policy-document file://task-role.json || return 1
+  --assume-role-policy-document file://task-role.json 
 
 echo ""
 echo "adding AmazonS3ReadOnlyAccess Policy"
 aws iam --region $REGION attach-role-policy --role-name $task_role \
-  --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess || return 1
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess 
 
 
-
-# ACCOUNT_ID=$(aws sts get-caller-identity \
-#    --query Account --output text)
-
-# aws iam create-role  \
-#   --role-name $task_execution_role \
-#   --assume-role-policy-document "$(
-#      jq -n . --arg account_id $ACCOUNT_ID '{
-#         "Statement": [{
-#             "Effect": "Allow",
-#             "Principal": { "Service": [ "ecs-tasks.amazonaws.com" ] },
-#             "Action": [ "sts:AssumeRole" ]
-#           },{
-#             "Effect": "Allow",
-#             "Principal": { "AWS": [ $account_id ] },
-#             "Action": [ "sts:AssumeRole" ]
-#           }]}'
-#      )"
-
-
-# aws iam create-role $task_role \
-#   --role-name $task_role \
-#   --policy-name 'describe-parameters' \
-#   --policy-document '{
-#             "Statement": [{
-#                 "Effect": "Allow",
-#                 "Action": [
-#                 "s3:Get*",
-#                 "s3:List*"
-#             ],
-#                 "Resource": "*"
-#             }]}'
-
-
+TASK_DEF=$(aws ecs describe-task-definition --task-definition $SERVICE_NAME)
  #to be used only at the very beginning when configuring ecs-cli
 # ecs-cli configure profile --access-key AWS_ACCESS_KEY_ID --secret-key AWS_SECRET_ACCESS_KEY --profile-name $profile_name
 
 echo ""
 echo "configuring cluster"
-ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name $CLUSTER --region $REGION || return 1
+ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name $CLUSTER --region $REGION 
 
-ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name || return 1
+ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name 
 
 
-ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name  || return 1
+ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name --verbose 
+
+
+
+
+
+
 
 
 echo "getting resource ids "
@@ -178,6 +154,29 @@ rm -f ecs-params.yml temp.yml
 ) >temp.yml
 . temp.yml
 # cat ecs-params.yml
+
+#####
+# ecs-cli configure --region us-east-1 --cluster $CLUSTER_NAME
+
+# create ecs cluster of ec2 instances
+# ecs-cli up --keypair $KEY_PAIR --capability-iam --size $CLUSTER_SIZE --security-group $SSH_SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --image-id $AMI_ID --instance-type $INSTANCE_TYPE --verbose
+
+# create task definition for a docker container
+ecs-cli compose --file docker-compose.yml --project-name $CLUSTER --verbose create
+
+# create elb & add a dns CNAME for the elb dns
+aws elb create-load-balancer --load-balancer-name $CLUSTER --listeners Protocol="TCP,LoadBalancerPort=8080,InstanceProtocol=TCP,InstancePort=80" --subnets $subnet1 $subnet2 --security-groups $SGid --scheme internal
+
+# create service with above created task definition & elb
+aws ecs create-service --service-name $CLUSTER --cluster $CLUSTER_NAME --task-definition $TASK_DEF --load-balancers "loadBalancerName=$CLUSTER,containerName=demo-service,containerPort=80" --desired-count 1 --deployment-configuration "maximumPercent=200,minimumHealthyPercent=50" --role $task_execution_role
+
+
+
+#####
+
+
+
+
 
 ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
   --cluster-config $CLUSTER --ecs-profile $profile_name
