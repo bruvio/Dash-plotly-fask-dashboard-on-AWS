@@ -31,16 +31,16 @@ app.css.config.serve_locally = True
 # app = dash.Dash()
 
 colors = {
-    # 'background': '#111111',
-    'background': '#0000ff',
+    'background': '#111111',
+    # 'background': '#0000ff',
     'text': 'rgb(255,0,0)',
     'plots': 'rgb(255,128,0)'}
 
 bucket = 'bruvio-training-data'
 name = 'workouts_bruvio_2020.csv'
 
-# df = read_df_from_s3(name, bucket)
-df = pd.read_csv('workouts_bruvio_2020.csv')
+df = read_df_from_s3(name, bucket)
+# df = pd.read_csv('workouts_bruvio_2020.csv')
 
 sport_options = []
 for sport in df['WorkoutType'].unique():
