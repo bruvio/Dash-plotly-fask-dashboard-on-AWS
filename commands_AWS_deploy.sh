@@ -78,29 +78,12 @@ aws iam --region $REGION attach-role-policy --role-name $task_role \
   --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess  || return 1
 
 
-
-
-# exit
  #to be used only at the very beginning when configuring ecs-cli
 # ecs-cli configure profile --access-key AWS_ACCESS_KEY_ID --secret-key AWS_SECRET_ACCESS_KEY --profile-name $profile_name
 
-
-echo ""
-echo "if service up turn it down first"
-ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name 
-
 echo ""
 echo "configuring cluster"
-# Create a cluster configuration, which defines the AWS region to use, resource creation prefixes, and the cluster name to use with the Amazon ECS CLI: 
-# create task definition for a docker container
-ecs-cli compose --project-name $CLUSTER create
-
-ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name $CLUSTER --region $REGION 
-
-
-echo ""
-echo "creating a new AWS CloudFormation stack called amazon-ecs-cli-setup-"$CLUSTER
-# Create an Amazon ECS cluster with the ecs-cli up command. Because you specified Fargate as your default launch type in the cluster configuration, this command creates an empty cluster and a VPC configured with two public subnets.
+ecs-cli configure --cluster $CLUSTER --default-launch-type FARGATE --config-name $CLUSTER --region $REGION || return 1
 
 ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name 
 
@@ -162,70 +145,20 @@ rm -f ecs-params.yml temp.yml
 #   echo "EOF";
 ) >temp.yml
 . temp.yml
-
-
-
-# echo ""
-# echo " ecs service file"
-# ## creating automatically ecs service file
-# export SERVICE_NAME
-# export task_role
-# # rm -f ecs-simple-service-elb.json temp.json  
-# ( echo "cat <<EOF >ecs-simple-service-elb.json";
-#   cat ecs-simple-service-elb-template.json;
-#   echo "EOF";
-# ) >temp.json
-# # . temp.json
-
-
 # cat ecs-params.yml
-
-#####
-# ecs-cli configure --region us-east-1 --cluster $CLUSTER_NAME
-
-# create ecs cluster of ec2 instances
-# ecs-cli up --keypair $KEY_PAIR --capability-iam --size $CLUSTER_SIZE --security-group $SSH_SECURITY_GROUP --vpc $VPC_ID --subnets $SUBNET_ID --image-id $AMI_ID --instance-type $INSTANCE_TYPE --verbose
-
-
-# echo "creating task definition"
-# # create task definition for a docker container
-# ecs-cli compose create --file docker-compose.yml --project-name $SERVICE_NAME --cluster-config $CLUSTER  
-
-echo "create elb & add a dns CNAME for the elb dns"
-# create elb & add a dns CNAME for the elb dns
-aws elb create-load-balancer --load-balancer-name $SERVICE_NAME --listeners Protocol="TCP,LoadBalancerPort=8080,InstanceProtocol=TCP,InstancePort=80" --subnets $subnet1 $subnet2 --security-groups $SGid --scheme internal
-
-echo "create service with above created task definition & elb"
-# create service with above created task definition & elb
-aws ecs create-service \
-    --cluster $CLUSTER \
-    --service-name ecs-simple-service-elb \
-    --cli-input-json file://ecs-simple-service-elb.json
-
-
-
 
 ecs-cli compose --project-name $SERVICE_NAME service up --create-log-groups \
   --cluster-config $CLUSTER --ecs-profile $profile_name
 
-echo ""
-echo "here are the containers that are running in the service"
-ecs-cli compose --project-name $SERVICE_NAME service ps --cluster-config $CLUSTER --ecs-profile $profile_name
+
+ecs-cli compose --project-name $SERVICE_NAME service ps \
+  --cluster-config $CLUSTER --ecs-profile $profile_name
+
+aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,InstanceType,PublicIpAddress,Tags[?Key==`Name`]| [0].Value]' --output table
 
 
 
-# TASK_DEF=$(aaws ecs describe-task-definition --task-definition $SERVICE_NAME --query "taskDefinition.taskDefinitionArn" --output text)
-
-# echo ""
-# echo $TASK_DEF
-
-
-# aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,InstanceType,PublicIpAddress,Tags[?Key==`Name`]| [0].Value]' --output table
-
-
-
-
-# exit
+exit
 
 # aws ecs update-service \
 # --cluster $CLUSTER \
