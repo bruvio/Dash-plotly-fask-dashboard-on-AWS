@@ -1,0 +1,13 @@
+{
+    "serviceName": ${SERVICE_NAME},
+    "taskDefinition": ${SERVICE_NAME},
+    "loadBalancers": [
+        {
+            "loadBalancerName": ${SERVICE_NAME},
+            "containerName": ${SERVICE_NAME},
+            "containerPort": 80
+        }
+    ],
+    "desiredCount": 10,
+    "role": $task_role
+}

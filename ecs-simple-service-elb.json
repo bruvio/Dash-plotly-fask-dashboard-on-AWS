@@ -1,0 +1,13 @@
+{
+    "serviceName": "dashboard",
+    "taskDefinition": "dashboard",
+    "loadBalancers": [
+        {
+            "loadBalancerName": "dashboard",
+            "containerName": "dashboard",
+            "containerPort": 80
+        }
+    ],
+    "desiredCount": 10,
+    "role": "ecsTaskExecutionRole"
+}
