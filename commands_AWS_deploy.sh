@@ -9,13 +9,13 @@ echo "repository name" $REPO_NAME
 SERVICE_NAME="dashboard"
 # IMAGE_VERSION="v_"${BUILD_NUMBER}
 IMAGE_VERSION=${1:-latest}
-# IMAGE_VERSION="latest"
-# TASK_FAMILY="dashboard"
-CLUSTER="dashboard_S3"
+
+TASK_FAMILY="dashboard"
+CLUSTER="dashboard"
 REGION="us-east-1"
 
 profile_name='AWS-cli'
-accountid='546123287190'
+accountid=$(aws sts get-caller-identity --query Account --output text)
 DNS_name='brunoviola.com'
 # iam_role='ecsTaskExecutionRole' #ecsTaskExecutionRole
 task_role='dashboardRole' #ecsTaskExecutionRole
@@ -50,8 +50,6 @@ docker tag $IMAGE_NAME $REPO_URI:$IMAGE_VERSION
 docker push $REPO_URI:$IMAGE_VERSION
 # exit
 
-# 546123287190.dkr.ecr.us-east-1.amazonaws.com/dashboard
-
 # aws ecs register-task-definition --generate-cli-skeleton
 
 echo ""
@@ -76,40 +74,6 @@ aws iam --region $REGION attach-role-policy --role-name $task_role \
   --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess || return 1
 
 
-
-# ACCOUNT_ID=$(aws sts get-caller-identity \
-#    --query Account --output text)
-
-# aws iam create-role  \
-#   --role-name $task_execution_role \
-#   --assume-role-policy-document "$(
-#      jq -n . --arg account_id $ACCOUNT_ID '{
-#         "Statement": [{
-#             "Effect": "Allow",
-#             "Principal": { "Service": [ "ecs-tasks.amazonaws.com" ] },
-#             "Action": [ "sts:AssumeRole" ]
-#           },{
-#             "Effect": "Allow",
-#             "Principal": { "AWS": [ $account_id ] },
-#             "Action": [ "sts:AssumeRole" ]
-#           }]}'
-#      )"
-
-
-# aws iam create-role $task_role \
-#   --role-name $task_role \
-#   --policy-name 'describe-parameters' \
-#   --policy-document '{
-#             "Statement": [{
-#                 "Effect": "Allow",
-#                 "Action": [
-#                 "s3:Get*",
-#                 "s3:List*"
-#             ],
-#                 "Resource": "*"
-#             }]}'
-
-
  #to be used only at the very beginning when configuring ecs-cli
 # ecs-cli configure profile --access-key AWS_ACCESS_KEY_ID --secret-key AWS_SECRET_ACCESS_KEY --profile-name $profile_name
 
@@ -123,6 +87,7 @@ ecs-cli down --force --cluster-config $CLUSTER --ecs-profile $profile_name || re
 ecs-cli up --force --cluster-config $CLUSTER --ecs-profile $profile_name  || return 1
 
 
+echo ""
 echo "getting resource ids "
 VPCid=$(aws ec2 describe-vpcs --vpc-ids --query "Vpcs[0].VpcId" --output text)
 echo ""
@@ -144,13 +109,13 @@ echo $subnet1
 echo $subnet2
 
 echo ""
-echo "\nadding ingress rules to security groups"
+echo "adding ingress rules to security groups"
 aws ec2 authorize-security-group-ingress --group-id $SGid --protocol tcp \
 --port 80 --cidr 0.0.0.0/0 --region $REGION || return
 
 
 echo ""
-echo "\ngenerating docker compose file to be used"
+echo "generating docker compose file to be used"
 
 ## creating automatically docker-compose file using image name to use
 export image=$REPO_URI
@@ -187,6 +152,8 @@ ecs-cli compose --project-name $SERVICE_NAME service ps \
   --cluster-config $CLUSTER --ecs-profile $profile_name
 
 aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,InstanceType,PublicIpAddress,Tags[?Key==`Name`]| [0].Value]' --output table
+
+
 
 exit
 
